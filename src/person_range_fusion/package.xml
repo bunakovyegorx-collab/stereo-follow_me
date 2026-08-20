@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>person_range_fusion</name>
+  <version>0.1.0</version>
+  <description>Fuse YOLO person detections with stereo disparity.</description>
+  <maintainer email="qqqq@example.com">qqqq</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>drone_stereo_bringup</exec_depend>
+  <exec_depend>foxglove_bridge</exec_depend>
+  <exec_depend>foxglove_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>image_view</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rqt_graph</exec_depend>
+  <exec_depend>rqt_image_view</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-psutil</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>stereo_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>yolo_person_car</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

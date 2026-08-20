@@ -1,0 +1,44 @@
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# ROS 1 / catkin
+devel/
+.catkin_workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Ваги моделей та бінарники
+*.pt
+*.onnx
+*.engine
+*.trt
+*.hef
+*.bin
+*.param
+
+# Дані
+*.bag
+*.db3
+*.mcap
+*.mp4
+*.avi
+data/
+datasets/
+rosbags/
+
+# Калібрування — залишаємо YAML, але не сирі знімки
+calib_images/
+*.raw
+
+# ОС та редактори
+.DS_Store
+.vscode/
+.idea/
+*.swp

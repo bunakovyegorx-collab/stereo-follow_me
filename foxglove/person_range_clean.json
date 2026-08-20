@@ -1,0 +1,125 @@
+{
+  "configById": {
+    "Image!camera": {
+      "cameraTopic": "/stereo/left/image_rect",
+      "enabledMarkerTopics": {
+        "/person_range/image_annotations": true
+      },
+      "annotations": {
+        "/person_range/image_annotations": {
+          "visible": true
+        }
+      },
+      "synchronize": false,
+      "smooth": false,
+      "flipHorizontal": false,
+      "flipVertical": false,
+      "rotation": 0,
+      "minValue": 0,
+      "maxValue": 10000,
+      "mode": "fit",
+      "zoomMode": "fit",
+      "foxglovePanelTitle": "Camera + person boxes"
+    },
+    "3D!scene": {
+      "cameraState": {
+        "distance": 5,
+        "perspective": true,
+        "phi": 0.9,
+        "target": [0, 0, 1.5],
+        "targetOffset": [0, 0, 0],
+        "targetOrientation": [0, 0, 0, 1],
+        "thetaOffset": 0,
+        "fovy": 0.75,
+        "near": 0.05,
+        "far": 30
+      },
+      "followMode": "follow-pose",
+      "followTf": "stereo_left_up",
+      "scene": {
+        "enableStats": false,
+        "labelScaleFactor": 1,
+        "meshUpAxis": "z_up"
+      },
+      "topics": {
+        "/tf": { "visible": true },
+        "/tf_static": { "visible": true },
+        "/stereo/depth": {
+          "visible": true,
+          "cameraInfoTopic": "/stereo/left/camera_info"
+        },
+        "/stereo/left/camera_info": { "visible": true },
+        "/person_range/scene": { "visible": true },
+        "/person_range/nearest_point": { "visible": true }
+      },
+      "layers": {},
+      "foxglovePanelTitle": "3D depth + person cubes"
+    },
+    "DiagnosticSummary!pi": {
+      "minLevel": 0,
+      "pinnedIds": [],
+      "hardwareIdFilter": "",
+      "topicToRender": "/person_range/diagnostics",
+      "sortByLevel": true,
+      "foxglovePanelTitle": "Pi status"
+    },
+    "Plot!range_x": {
+      "paths": [
+        {
+          "value": "/person_range/detections_3d.detections[:].bbox.center.position.x",
+          "enabled": true,
+          "timestampMethod": "receiveHeaderStamp",
+          "label": "person X forward (m)"
+        },
+        {
+          "value": "/person_range/nearest_point.point.x",
+          "enabled": true,
+          "timestampMethod": "receiveHeaderStamp",
+          "label": "nearest X forward (m)"
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 220,
+      "foxglovePanelTitle": "Range X (REP-103, tape check)"
+    },
+    "Log!rosout": {
+      "searchTerms": ["fusion"],
+      "minLogLevel": 1,
+      "nameFilter": {},
+      "topicToRender": "/rosout",
+      "foxglovePanelTitle": "Logs (filter: fusion)"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "direction": "column",
+    "first": {
+      "direction": "row",
+      "first": "Image!camera",
+      "second": "3D!scene",
+      "splitPercentage": 45
+    },
+    "second": {
+      "direction": "row",
+      "first": "DiagnosticSummary!pi",
+      "second": {
+        "direction": "row",
+        "first": "Plot!range_x",
+        "second": "Log!rosout",
+        "splitPercentage": 55
+      },
+      "splitPercentage": 28
+    },
+    "splitPercentage": 62
+  }
+}

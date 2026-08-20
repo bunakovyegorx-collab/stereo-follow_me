@@ -1,0 +1,23 @@
+{
+  "saved_at": "2026-07-14T13:03:09+01:00",
+  "resolution": [
+    640,
+    480
+  ],
+  "board": "8x6",
+  "square_m": 0.03,
+  "baseline_m": 0.1309998603005973,
+  "baseline_mm": 130.9998603005973,
+  "fx_rect_px": 602.6536524434173,
+  "Tx_P03": -78.94754427973238,
+  "source_files": {
+    "left": "imx219__base_axi_pcie_1000120000_rp1_i2c_88000_imx219_10_640x480_1640x1232_RGGB_PISP_COMP1_RAW.yaml",
+    "right": "imx219__base_axi_pcie_1000120000_rp1_i2c_80000_imx219_10_640x480_1640x1232_RGGB_PISP_COMP1_RAW.yaml"
+  },
+  "used_by_profiles": [
+    "live_10fps",
+    "foxglove_live",
+    "person_range"
+  ],
+  "notes": "Committed via cameracalibrator set_camera_info after baseline change. Scaled to 320x240 at person_range launch."
+}
