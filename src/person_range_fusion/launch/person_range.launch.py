@@ -49,6 +49,14 @@ from launch.conditions import IfCondition
 # IfCondition — умовний запуск ноди: "запускай ЦЮ ноду, ТІЛЬКИ ЯКЩО
 # значення такого-то launch-аргументу == true". Це аналог `if` для нод.
 
+from launch.conditions import LaunchConfigurationEquals
+# LaunchConfigurationEquals('detector_backend', 'hailo') — умова "значення
+# аргументу detector_backend дорівнює рядку 'hailo'". Ця версія ROS 2
+# (Jazzy) не має AndCondition, тому для комбінації "yolo:=true І
+# detector_backend:=X" нода з умовою LaunchConfigurationEquals огортається
+# в GroupAction з умовою IfCondition(yolo) — обидві умови повинні бути
+# істинними, щоб нода запустилась.
+
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 # PythonLaunchDescriptionSource — каже IncludeLaunchDescription: "той файл,
 # який я підключаю, написаний на Python" (а не .xml/.yaml launch-формат,
@@ -75,6 +83,12 @@ from launch_ros.actions import Node
 # (з якого пакета, який виконуваний файл, з якими параметрами).
 # Це те, що реально стає окремим процесом в ОС.
 
+from launch.actions import GroupAction
+# GroupAction([...]) — групує кілька дій під ОДНІЄЮ умовою (condition):
+# усе всередині запускається лише якщо ця зовнішня умова істинна. Разом із
+# власною умовою (condition=) кожної внутрішньої Node це дає ефект "І"
+# (AND) без класу AndCondition, якого немає в цій версії ROS 2.
+
 from launch_ros.substitutions import FindPackageShare
 # FindPackageShare('drone_stereo_bringup') — "знайди, де на диску встановлений
 # (в install/) пакет з таким іменем, і поверни шлях до його теки share/".
@@ -95,8 +109,21 @@ from launch_ros.substitutions import FindPackageShare
 # ^ і $ у regex означають "рівно цей рядок повністю", без нічого зайвого
 # до чи після (інакше '/stereo/depth' підхопив би і '/stereo/depth/extra').
 PERSON_RANGE_FOXGLOVE_TOPIC_WHITELIST = [
-    '^/stereo/disparity$',
-    '^/stereo/depth$',
+    # JPEG замість сирого '^/stereo/disparity$': 32FC1 — це 4 байти на піксель,
+    # тобто 1.23 МБ на кадр при 640x480, ~13.5 МБ/с при 11 Гц. eth0 тут
+    # узгоджений на 100 Мбіт/с (12.5 МБ/с), тож один цей топік фізично не
+    # влазив у канал — черга websocket росла, Foxglove відставав на десятки
+    # секунд. Стиснутий вигляд — ~36 КБ на кадр при 5 Гц (~0.18 МБ/с).
+    # Сирий disparity нікуди не подівся, він і далі йде в depth/fusion на Pi;
+    # щоб подивитись його в Foxglove, поверни сюди '^/stereo/disparity$'
+    # (і будь готовий до тієї ж затримки, поки лінк 100 Мбіт).
+    '^/stereo/disparity_viz/compressed$',
+    # '^/stereo/depth$' прибрано з тієї ж причини: це теж 32FC1, ті самі
+    # 1.23 МБ на кадр (~12 МБ/с при 10 Гц). Саме на нього була підписана
+    # панель Foxglove, коли черга сокета трималась на 2.5 МБ, а картинка
+    # відставала на десятки секунд. Метричну глибину для чисел рахує
+    # fusion_node локально на Pi і віддає її легкими топіками нижче;
+    # для ока та сама інформація є у disparity_viz/compressed.
     '^/stereo/left/camera_info$',
     '^/stereo/left/image_rect$',
     '^/person_range/image_annotations$',
@@ -116,8 +143,7 @@ PERSON_RANGE_FOXGLOVE_TOPIC_WHITELIST = [
 # але повідомлення можуть губитись; підходить для відео/картинок,
 # де важливіша свіжість кадру, ніж 100% доставка кожного кадру).
 PERSON_RANGE_FOXGLOVE_BEST_EFFORT = [
-    '^/stereo/disparity$',
-    '^/stereo/depth$',
+    '^/stereo/disparity_viz/compressed$',
     '^/stereo/left/image_rect$',
     '^/person_range/image_annotations$',
     '^/person_range/scene$',
@@ -162,6 +188,7 @@ def generate_launch_description() -> LaunchDescription:
     # іменем". Робимо це заздалегідь, щоб нижче писати коротше (visualization
     # замість LaunchConfiguration('visualization') щоразу).
     visualization = LaunchConfiguration('visualization')
+    yolo = LaunchConfiguration('yolo')
     foxglove = LaunchConfiguration('foxglove')
     rqt_image_view = LaunchConfiguration('rqt_image_view')
     rqt_graph = LaunchConfiguration('rqt_graph')
@@ -181,6 +208,79 @@ def generate_launch_description() -> LaunchDescription:
         #   ros2 launch person_range_fusion person_range.launch.py yolo_fps:=5.0
         # Якщо нічого не передати — використовується default_value.
         # ====================================================================
+
+        DeclareLaunchArgument(
+            'stereo_profile',
+            default_value='person_range_2x',
+            choices=[
+                'person_range', 'person_range_2x', 'live_10fps',
+                'foxglove_live',
+            ],
+            description=(
+                'Which drone_stereo_bringup camera/SGBM profile to run. '
+                'person_range_2x is 640x480 (2x linear resolution, native '
+                'calibration). Note: eth0 here is only 100 Mbps '
+                '(12.5 MB/s) and its disparity frames alone need '
+                '~12.7 MB/s, which used to saturate the link -- '
+                'foxglove_bridge use_compression is now on to cut that. '
+                'Its disparity range is also narrowed to 1.5-5.0m so '
+                'closer objects have no valid disparity. Pass '
+                'stereo_profile:=person_range to go back to 320x240.'
+            ),
+        ),
+
+        DeclareLaunchArgument(
+            'yolo',
+            default_value='True',
+            description=(
+                'Run the YOLO detector + fusion (core 3). On by default. '
+                'Set false (yolo:=false) to turn it off.'
+            ),
+        ),
+
+        DeclareLaunchArgument(
+            'detector_backend',
+            default_value='hailo',
+            choices=['ncnn', 'hailo'],
+            description=(
+                'Which person/car detector implementation to run under '
+                'yolo:=true. "hailo" (default) = Hailo-8 accelerated '
+                'detector (hailo_yolo_detector). "ncnn" = older CPU '
+                'ultralytics detector (yolo_person_car), kept as a fallback. '
+                'Both publish the same Detection2DArray contract on '
+                '/person_detector/detections.'
+            ),
+        ),
+
+        DeclareLaunchArgument(
+            'hef_path',
+            default_value='/usr/share/hailo-models/yolov8s_h8.hef',
+            description=(
+                'HEF used by detector_backend:=hailo. Must be compiled for '
+                'HAILO8 (not HAILO8L/HAILO10) to match this board.'
+            ),
+        ),
+
+        DeclareLaunchArgument(
+            'foxglove_disparity_fps',
+            default_value='5.0',
+            description=(
+                'Rate cap for the compressed disparity view sent to '
+                'Foxglove. SGBM runs faster than this, but a human watching '
+                'a depth map cannot use more, and each skipped frame is '
+                '~36 KB kept off a 100 Mb/s link.'
+            ),
+        ),
+
+        DeclareLaunchArgument(
+            'foxglove_jpeg_quality',
+            default_value='60',
+            description=(
+                'JPEG quality for the disparity view (q60 is ~36 KB at '
+                '640x480, q75 ~54 KB). Raise it if the depth banding looks '
+                'too blocky and the link has headroom.'
+            ),
+        ),
 
         DeclareLaunchArgument('model_path', default_value=model_default),
         # Шлях до YOLO-моделі. За замовчуванням — model_default, обчислений вище.
@@ -292,7 +392,7 @@ def generate_launch_description() -> LaunchDescription:
             # {'profile': 'person_range', ...} на список пар (ключ, значення),
             # бо такий формат вимагає launch_arguments.
             launch_arguments={
-                'profile': 'person_range',       # який профіль розрізнення/налаштувань SGBM використати
+                'profile': LaunchConfiguration('stereo_profile'),       # який профіль розрізнення/налаштувань SGBM використати
                 'rviz': 'False',                 # не відкривати RViz звідси (у нас свої вьювери нижче)
                 'disparity_viz': 'False',         # не малювати окрему кольорову картинку disparity
                 'combined_mode': 'True',          # прапорець "запускається як частина великого пайплайна"
@@ -343,41 +443,101 @@ def generate_launch_description() -> LaunchDescription:
             output='screen',
         ),
 
+        # Мережевий офлоуд: сирий disparity (1.23 МБ/кадр) не влазить у
+        # 100-мегабітний eth0, тому назовні йде стиснутий вигляд ~36 КБ.
+        # Живе на ядрах 0-2 разом із SGBM/depth: JPEG-кодування дешеве
+        # (~2-3 мс на кадр при 5 Гц), а ядро 3 лишається за YOLO/fusion.
         Node(
-            package='yolo_person_car',
-            executable='detector',   # entry point 'detector' → yolo_person_car/detector_node.py:main
-            name='detector',
-            namespace='person_detector',
-            prefix=[
-                'nice -n 10 taskset -c 3 ',
-                # nice -n 10 — НИЖЧИЙ пріоритет (число більше = менш пріоритетний
-                # для ОС), taskset -c 3 — прив'язка тільки до ядра #3.
-                LaunchConfiguration('python_executable'),
-                # ВАЖЛИВО: тут в prefix підставляється ще й ШЛЯХ ДО ПИТОН-ІНТЕРПРЕТАТОРА
-                # (той самий python_default з окремого venv). Тобто реальна команда:
-                #   nice -n 10 taskset -c 3  <venv>/bin/python <шлях_до_executable_detector>
-                # Це потрібно, щоб detector_node.py виконувався ІНШИМ python'ом,
-                # ніж системний ROS-python (бо в venv стоять залежності YOLO,
-                # яких немає/не повинно бути в системному python).
-            ],
-            additional_env={'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'},
-            # additional_env — додаткові змінні середовища ТІЛЬКИ для цього
-            # процесу. Тут обмежуємо кількість потоків, які використовують
-            # бібліотеки лінійної алгебри (OpenMP/OpenBLAS), інакше вони самі
-            # спробують розлізтися по всіх ядрах, ігноруючи taskset.
+            package='drone_stereo_bringup',
+            executable='disparity_jpeg',
+            name='disparity_jpeg',
+            namespace='stereo',
+            prefix=['nice -n 5 taskset -c 0-2'],
             parameters=[{
-                'image_topic': '/stereo/left/image_rect',   # звідки брати кадри
-                'model_path': LaunchConfiguration('model_path'),           # підставиться launch-аргумент
-                'confidence_threshold': LaunchConfiguration('confidence_threshold'),
-                'imgsz': LaunchConfiguration('imgsz'),
-                'allowed_classes': [0],
-                # У YOLO кожен клас об'єкта має номер (з датасету COCO).
-                # 0 = "person" (людина). Тобто детектор шукає ТІЛЬКИ людей,
-                # ігноруючи всі інші класи (машини, тварин тощо).
-                'enable_debug_image': False,
-                'max_inference_fps': LaunchConfiguration('yolo_fps'),
+                'disparity_topic': '/stereo/disparity',
+                'jpeg_topic': '/stereo/disparity_viz/compressed',
+                'max_fps': LaunchConfiguration('foxglove_disparity_fps'),
+                'jpeg_quality': LaunchConfiguration('foxglove_jpeg_quality'),
             }],
             output='screen',
+        ),
+
+        # GroupAction(condition=IfCondition(yolo)) + внутрішня умова
+        # LaunchConfigurationEquals('detector_backend', ...) на кожній ноді
+        # разом дають ефект "yolo:=true І detector_backend:=X" (ця версія
+        # ROS 2 не має класу AndCondition).
+        GroupAction(
+            condition=IfCondition(yolo),
+            actions=[
+                Node(
+                    package='yolo_person_car',
+                    executable='detector',   # entry point 'detector' → yolo_person_car/detector_node.py:main
+                    name='detector',
+                    namespace='person_detector',
+                    condition=LaunchConfigurationEquals('detector_backend', 'ncnn'),
+                    # detector_backend:=hailo прибирає цю ноду — тоді замість
+                    # неї запускається hailo_yolo_detector нижче.
+                    prefix=[
+                        'nice -n 10 taskset -c 3 ',
+                        # nice -n 10 — НИЖЧИЙ пріоритет (число більше = менш пріоритетний
+                        # для ОС), taskset -c 3 — прив'язка тільки до ядра #3.
+                        LaunchConfiguration('python_executable'),
+                        # ВАЖЛИВО: тут в prefix підставляється ще й ШЛЯХ ДО ПИТОН-ІНТЕРПРЕТАТОРА
+                        # (той самий python_default з окремого venv). Тобто реальна команда:
+                        #   nice -n 10 taskset -c 3  <venv>/bin/python <шлях_до_executable_detector>
+                        # Це потрібно, щоб detector_node.py виконувався ІНШИМ python'ом,
+                        # ніж системний ROS-python (бо в venv стоять залежності YOLO,
+                        # яких немає/не повинно бути в системному python).
+                    ],
+                    additional_env={'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'},
+                    # additional_env — додаткові змінні середовища ТІЛЬКИ для цього
+                    # процесу. Тут обмежуємо кількість потоків, які використовують
+                    # бібліотеки лінійної алгебри (OpenMP/OpenBLAS), інакше вони самі
+                    # спробують розлізтися по всіх ядрах, ігноруючи taskset.
+                    parameters=[{
+                        'image_topic': '/stereo/left/image_rect',   # звідки брати кадри
+                        'model_path': LaunchConfiguration('model_path'),           # підставиться launch-аргумент
+                        'confidence_threshold': LaunchConfiguration('confidence_threshold'),
+                        'imgsz': LaunchConfiguration('imgsz'),
+                        'allowed_classes': [0],
+                        # У YOLO кожен клас об'єкта має номер (з датасету COCO).
+                        # 0 = "person" (людина). Тобто детектор шукає ТІЛЬКИ людей,
+                        # ігноруючи всі інші класи (машини, тварин тощо).
+                        'enable_debug_image': False,
+                        'max_inference_fps': LaunchConfiguration('yolo_fps'),
+                    }],
+                    output='screen',
+                ),
+
+                # Hailo-8 accelerated detector -- alternative backend to the
+                # NCNN node above, same 'detector' name / 'person_detector'
+                # namespace so fusion's subscription to
+                # /person_detector/detections needs no change regardless of
+                # which backend is active.
+                Node(
+                    package='hailo_yolo_detector',
+                    executable='hailo_detector',   # entry point 'hailo_detector' → hailo_yolo_detector/detector_node.py:main
+                    name='detector',
+                    namespace='person_detector',
+                    condition=LaunchConfigurationEquals('detector_backend', 'hailo'),
+                    prefix=[
+                        'nice -n 10 taskset -c 3 ',
+                        LaunchConfiguration('python_executable'),
+                        # той самий venv, що й для NCNN-детектора: hailo_platform
+                        # імпортується з нього завдяки --system-site-packages.
+                    ],
+                    additional_env={'OMP_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'},
+                    parameters=[{
+                        'image_topic': '/stereo/left/image_rect',
+                        'hef_path': LaunchConfiguration('hef_path'),
+                        'confidence_threshold': LaunchConfiguration('confidence_threshold'),
+                        'allowed_classes': [0],
+                        'enable_debug_image': False,
+                        'max_inference_fps': LaunchConfiguration('yolo_fps'),
+                    }],
+                    output='screen',
+                ),
+            ],
         ),
 
         # Optical camera frame → REP-103 (X forward, Y left, Z up).
@@ -419,6 +579,9 @@ def generate_launch_description() -> LaunchDescription:
             executable='fusion',    # entry point 'fusion' → person_range_fusion/fusion_node.py:main
             name='fusion',
             namespace='person_range',
+            condition=IfCondition(yolo),
+            # fusion споживає /person_detector/detections -- без YOLO їй
+            # нема чим живитись, тож вимикаємо разом з ним.
             prefix=['nice -n 5 taskset -c 3'],
             # Проміжний пріоритет (5) між depth (0) і detector (10),
             # теж прив'язана до ядра #3, разом з YOLO — бо fusion залежить
@@ -477,7 +640,7 @@ def generate_launch_description() -> LaunchDescription:
                 'max_qos_depth': 1,               # максимальний — тобто тримаємо лише 1 останнє повідомлення (не накопичуємо старі)
                 'num_threads': 2,                 # скільки потоків обробки на сервері
                 'send_buffer_limit': 1000000,     # ліміт буфера відправки в байтах (~1 МБ), захист від переповнення при повільній мережі
-                'use_compression': False,          # не стискати дані (стиснення коштує CPU, якого й так мало)
+                'use_compression': True,          # permessage-deflate на websocket: менше байт по eth0 (100 Mbps), ROS-топіки не чіпає
                 'best_effort_qos_topic_whitelist': (
                     PERSON_RANGE_FOXGLOVE_BEST_EFFORT
                 ),
