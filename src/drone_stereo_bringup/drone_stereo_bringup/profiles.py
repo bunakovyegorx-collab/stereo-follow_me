@@ -121,6 +121,39 @@ PERSON_RANGE_CAMERA_PROFILE = {
     'FrameDurationLimits': [83333, 83333],
 }
 
+# Test profile: same 12 FPS budget as person_range, but 640x480 (2x linear
+# resolution) instead of 320x240. Uses the already-calibrated native
+# 640x480 stereo YAML directly (LIVE_CALIBRATIONS) -- no rescaling needed.
+# Expect substantially higher SGBM cost: not just 4x the pixels, but a wider
+# disparity_range too, since the focal length in pixels doubles with
+# resolution (see PERSON_RANGE_2X_STEREO_OVERRIDES below).
+PERSON_RANGE_2X_CAMERA_PROFILE = {
+    **REALTIME_CAMERA_PROFILE,
+    'FrameDurationLimits': [83333, 83333],
+}
+
+# Realistic follow-me distance window: 1.5-5.0m (matches fusion_node's
+# actual min_depth/max_depth=0.5..5.0, tightened at the near end -- a
+# tracked person realistically isn't closer than ~1.5m to a drone/robot
+# camera in this scenario). disparity_range is dominated by the near limit
+# (small Z -> large disparity), so this cuts SGBM cost roughly 3x versus
+# a literal 0.5m near limit (144) at the native 640x480 f*B=62.415, while
+# still covering the far end fusion actually uses (previously capped at an
+# arbitrary 3m, under-covering fusion's real 5m ceiling).
+PERSON_RANGE_2X_STEREO_OVERRIDES = {
+    'sgbm_mode': 2,
+    'correlation_window_size': 5,
+    'min_disparity': 0,
+    'disparity_range': 48,
+    'speckle_size': 0,
+    'speckle_range': 0,
+    'disp12_max_diff': 0,
+    'uniqueness_ratio': 7.0,
+    'P1': 200.0,
+    'P2': 800.0,
+    'queue_size': 2,
+}
+
 # Теоретично максимальний профіль камер: повне зчитування сенсора без кропу,
 # максимальна доступна бітність і цільова частота 30 кадрів на секунду.
 THEORETICAL_MAXIMUM_CAMERA_PROFILE = {
@@ -163,6 +196,7 @@ CAMERA_PROFILES = {
     # SGBM, але launch-файл не запускає локальні RViz/disparity_viz.
     'foxglove_live': LIVE_10FPS_CAMERA_PROFILE,
     'person_range': PERSON_RANGE_CAMERA_PROFILE,
+    'person_range_2x': PERSON_RANGE_2X_CAMERA_PROFILE,
     'theoretical_maximum': THEORETICAL_MAXIMUM_CAMERA_PROFILE,
     'maximum_sgbm': MAXIMUM_SGBM_CAMERA_PROFILE,
 }
@@ -339,6 +373,8 @@ def load_named_stereo_profile(
     profile = load_stereo_profile(calibration_path, expected_size)
     if name in ('live_10fps', 'foxglove_live', 'person_range'):
         profile.update(LIVE_10FPS_STEREO_OVERRIDES)
+    elif name == 'person_range_2x':
+        profile.update(PERSON_RANGE_2X_STEREO_OVERRIDES)
     elif name in ('realtime_bm', 'cpu_stereobm_baseline'):
         profile.update(REALTIME_BM_STEREO_OVERRIDES)
     return profile

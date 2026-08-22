@@ -100,6 +100,17 @@ def profile_calibrations(profile_name):
             side: prepare_live_calibration(side)
             for side in ('left', 'right')
         }
+    if profile_name == 'person_range_2x':
+        # LIVE_CALIBRATIONS is already a native 640x480 stereo-rectified
+        # calibration (R/P include the real baseline) -- no scaling needed,
+        # unlike the other profiles above.
+        for side in ('left', 'right'):
+            if not LIVE_CALIBRATIONS[side].is_file():
+                raise FileNotFoundError(
+                    f'missing 640x480 source calibration for {side}: '
+                    f'{LIVE_CALIBRATIONS[side]}'
+                )
+        return dict(LIVE_CALIBRATIONS)
     raise ValueError(f'unsupported SGBM launch profile: {profile_name}')
 
 
@@ -294,7 +305,7 @@ def generate_launch_description():
             default_value='live_10fps',
             choices=[
                 'live_10fps', 'foxglove_live', 'person_range',
-                'maximum_sgbm',
+                'person_range_2x', 'maximum_sgbm',
             ],
             description='Camera and SGBM performance profile.',
         ),

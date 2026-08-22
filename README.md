@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# stereo-follow_me
-=======
 # camera_ws — **ПОВНИЙ** person-range пайплайн
 
 > **Обов’язково:** для звичайної роботи, демо, перевірки на залізі та інтеграції  
@@ -100,7 +97,7 @@ cd ~/camera_ws
 | **`ws://qqqq:8765`** | Клієнт у **Wi‑Fi hotspot Pi** (DNS роздає dnsmasq: `qqqq` → `192.168.1.1`) |
 | `ws://qqqq.local:8765` | mDNS/Avahi (hotspot або LAN, Mac/Linux) |
 | `ws://192.168.1.1:8765` | hotspot, завжди за IP |
-| `ws://192.168.0.x:8765` | eth0 LAN |
+| `ws://192.168.0.200:8765` | eth0 LAN, завжди за IP |
 
 Коротке ім’я **`qqqq` без `.local`** — через DHCP DNS хотспота
 (`/etc/NetworkManager/dnsmasq-shared.d/qqqq.conf`). На eth0 LAN
@@ -253,7 +250,7 @@ Bridge = **`0.0.0.0:8765`** (доступ з **будь-якої** мережі 
    - **Hotspot (рекомендовано):** `ws://qqqq:8765` — коротке ім’я **без**
      `.local` (DNS хотспота Pi)
    - або mDNS: `ws://qqqq.local:8765`
-   - або IP: `ws://192.168.1.1:8765` (hotspot) / eth0-IP (LAN)
+   - або IP: `ws://192.168.1.1:8765` (hotspot) / `ws://192.168.0.200:8765` (eth0 LAN)
 2. **Layout → Import** → `foxglove/person_range_clean.json`
 
 Якщо `qqqq` не відкривається: переконайтесь, що Mac/ПК у Wi‑Fi
@@ -378,4 +375,3 @@ ss -ltn | grep 8765        # → 0.0.0.0:8765
 ros2 launch drone_stereo_bringup stereo_sgbm_light.launch.py profile:=person_range
 ros2 launch yolo_person_car person_test.launch.py
 ```
->>>>>>> 8368694 (Initial import: stereo follow_me pipeline from RPi5)

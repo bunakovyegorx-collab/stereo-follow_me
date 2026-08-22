@@ -34,6 +34,19 @@ def disparity_to_mono8(data, height, width, step, minimum, maximum):
     return result
 
 
+def disparity_bounds(msg):
+    """Return (minimum, maximum) disparity to normalise a frame against.
+
+    stereo_msgs normally carries max_disparity as the absolute upper bound,
+    but stay compatible with publishers that report it as a span.
+    """
+    minimum = float(msg.min_disparity)
+    maximum = float(msg.max_disparity)
+    if maximum > minimum:
+        return minimum, maximum
+    return minimum, minimum + maximum
+
+
 class DisparityViz(Node):
     def __init__(self):
         super().__init__('disparity_viz')
@@ -60,17 +73,13 @@ class DisparityViz(Node):
             )
             return
         try:
-            maximum = float(msg.min_disparity) + float(msg.max_disparity)
-            # max_disparity in stereo_msgs is normally the absolute upper
-            # bound. Keep compatibility with publishers that expose it so.
-            if float(msg.max_disparity) > float(msg.min_disparity):
-                maximum = float(msg.max_disparity)
+            minimum, maximum = disparity_bounds(msg)
             visualization = disparity_to_mono8(
                 image.data,
                 int(image.height),
                 int(image.width),
                 int(image.step),
-                float(msg.min_disparity),
+                minimum,
                 maximum,
             )
         except ValueError as exc:

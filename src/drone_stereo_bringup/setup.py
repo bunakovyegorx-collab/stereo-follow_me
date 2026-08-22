@@ -18,6 +18,8 @@ setup(
         'console_scripts': [
             'disparity_viz = '
             'drone_stereo_bringup.disparity_viz_node:main',
+            'disparity_jpeg = '
+            'drone_stereo_bringup.disparity_jpeg_node:main',
             'stereo_point_cloud_preview = '
             'drone_stereo_bringup.point_cloud_preview_node:main',
         ],
