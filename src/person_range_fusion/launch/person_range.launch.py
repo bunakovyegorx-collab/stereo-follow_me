@@ -138,6 +138,7 @@ PERSON_RANGE_FOXGLOVE_TOPIC_WHITELIST = [
     # канал 100 Мбіт вже не витримав '/stereo/depth' (див. коментар вище).
     '^/detectors/cluster/scene$',
     '^/detectors/cluster/boxes$',
+    '^/detectors/cluster/cloud$',
     '^/detectors/udepth/scene$',
     '^/detectors/udepth/boxes$',
     '^/detectors/udepth/umap/compressed$',
@@ -165,6 +166,7 @@ PERSON_RANGE_FOXGLOVE_BEST_EFFORT = [
     # цих рядків foxglove_bridge підписався б як RELIABLE і не збігся б.
     '^/detectors/cluster/scene$',
     '^/detectors/cluster/boxes$',
+    '^/detectors/cluster/cloud$',
     '^/detectors/udepth/scene$',
     '^/detectors/udepth/boxes$',
     '^/detectors/udepth/umap/compressed$',

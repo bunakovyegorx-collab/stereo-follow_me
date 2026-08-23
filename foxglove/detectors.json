@@ -1,0 +1,137 @@
+{
+  "configById": {
+    "3D!detectors": {
+      "cameraState": {
+        "distance": 6,
+        "perspective": true,
+        "phi": 1.0,
+        "target": [
+          1.5,
+          0,
+          0.8
+        ],
+        "targetOffset": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "thetaOffset": 0,
+        "fovy": 0.75,
+        "near": 0.05,
+        "far": 30
+      },
+      "followMode": "follow-pose",
+      "followTf": "stereo_left_up",
+      "scene": {
+        "enableStats": false,
+        "labelScaleFactor": 1,
+        "meshUpAxis": "z_up"
+      },
+      "topics": {
+        "/tf": {
+          "visible": false
+        },
+        "/tf_static": {
+          "visible": false
+        },
+        "/detectors/cluster/cloud": {
+          "visible": true,
+          "pointSize": 5,
+          "colorMode": "colormap",
+          "colorField": "intensity",
+          "colorMap": "turbo"
+        },
+        "/detectors/cluster/scene": {
+          "visible": true
+        },
+        "/detectors/udepth/scene": {
+          "visible": true
+        },
+        "/person_range/scene": {
+          "visible": false
+        }
+      },
+      "layers": {},
+      "publish": {
+        "type": "point"
+      },
+      "foxglovePanelTitle": "3D: cloud + cluster (blue) + U-depth (yellow)"
+    },
+    "Image!umap": {
+      "cameraTopic": "/detectors/udepth/umap/compressed",
+      "enabledMarkerTopics": {},
+      "annotations": {},
+      "synchronize": false,
+      "smooth": false,
+      "flipHorizontal": false,
+      "flipVertical": false,
+      "rotation": 0,
+      "mode": "fit",
+      "zoomMode": "fit",
+      "foxglovePanelTitle": "U-map (green = U-depth boxes)"
+    },
+    "Image!camera": {
+      "cameraTopic": "/stereo/left/image_rect",
+      "enabledMarkerTopics": {
+        "/person_range/image_annotations": true
+      },
+      "annotations": {
+        "/person_range/image_annotations": {
+          "visible": true
+        }
+      },
+      "synchronize": false,
+      "smooth": false,
+      "flipHorizontal": false,
+      "flipVertical": false,
+      "rotation": 0,
+      "mode": "fit",
+      "zoomMode": "fit",
+      "foxglovePanelTitle": "Camera"
+    },
+    "DiagnosticSummary!timing": {
+      "minLevel": 0,
+      "pinnedIds": [],
+      "hardwareIdFilter": "",
+      "topicToRender": "/detectors/timing",
+      "sortByLevel": false,
+      "foxglovePanelTitle": "Detector timing"
+    },
+    "RawMessages!stages": {
+      "topicPath": "/detectors/timing.status[0].values[:]",
+      "foxglovePanelTitle": "Timing breakdown"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": {
+      "first": "3D!detectors",
+      "second": {
+        "first": "Image!umap",
+        "second": "Image!camera",
+        "direction": "column",
+        "splitPercentage": 45
+      },
+      "direction": "row",
+      "splitPercentage": 62
+    },
+    "second": {
+      "first": "DiagnosticSummary!timing",
+      "second": "RawMessages!stages",
+      "direction": "row",
+      "splitPercentage": 40
+    },
+    "direction": "column",
+    "splitPercentage": 68
+  }
+}

@@ -17,6 +17,8 @@ from foxglove_msgs.msg import SceneUpdate
 from foxglove_msgs.msg import TextPrimitive
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Vector3
+from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
 from vision_msgs.msg import BoundingBox3D
 from vision_msgs.msg import Detection3D
@@ -26,6 +28,7 @@ from vision_msgs.msg import ObjectHypothesisWithPose
 from person_range_fusion.foxglove_viz import wireframe_cube_lines
 
 from target_tracker.clustering import Cluster
+from target_tracker.geometry import pack_xyzi
 from target_tracker.udepth import UBox
 
 # One colour per detector so the two opinions stay tellable apart in the
@@ -166,3 +169,32 @@ def _detection(
     hypothesis.pose.pose = bbox.center
     detection.results.append(hypothesis)
     return detection
+
+
+def voxel_cloud(
+    centroids: np.ndarray, counts: np.ndarray, header: Header,
+) -> PointCloud2:
+    """Publish the voxel centroids as a PointCloud2.
+
+    This is the *filtered* cloud -- a few hundred points, not the ~300k the
+    depth image would yield -- which is the only reason it can go on the wire
+    at all. Roughly 10 KB per frame, four times cheaper than the disparity
+    JPEG already being streamed. Never publish the unfiltered cloud here.
+    """
+    cloud = PointCloud2()
+    cloud.header = header
+    cloud.height = 1
+    cloud.width = int(centroids.shape[0])
+    cloud.fields = [
+        PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+        PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+        PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+        PointField(name='intensity', offset=12,
+                   datatype=PointField.FLOAT32, count=1),
+    ]
+    cloud.is_bigendian = False
+    cloud.point_step = 16
+    cloud.row_step = cloud.point_step * cloud.width
+    cloud.is_dense = True
+    cloud.data = pack_xyzi(centroids, counts)
+    return cloud

@@ -128,3 +128,22 @@ def _empty_voxels() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         np.zeros((0, 3), dtype=np.int32),
         np.zeros(0, dtype=np.int64),
     )
+
+
+def pack_xyzi(centroids: np.ndarray, counts: np.ndarray) -> bytes:
+    """Pack voxel centroids into an xyz+intensity PointCloud2 payload.
+
+    Intensity carries how many raw points the voxel swallowed, so a dense
+    torso reads brighter than a one-hit speckle voxel. 16 bytes per point:
+    ~600 voxels is under 10 KB per frame, which is what makes publishing the
+    cloud affordable at all -- the raw depth image it came from is 1.23 MB.
+    """
+    if centroids.ndim != 2 or centroids.shape[1] != 3:
+        raise ValueError('expected an (M, 3) centroid array')
+    if counts.shape[0] != centroids.shape[0]:
+        raise ValueError('centroids and counts must agree in length')
+
+    packed = np.empty((centroids.shape[0], 4), dtype=np.float32)
+    packed[:, :3] = centroids
+    packed[:, 3] = counts
+    return packed.tobytes()

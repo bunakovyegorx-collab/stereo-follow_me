@@ -2,6 +2,7 @@ import numpy as np
 
 from target_tracker.geometry import depth_to_points
 from target_tracker.geometry import optical_to_base
+from target_tracker.geometry import pack_xyzi
 from target_tracker.geometry import voxel_filter
 
 
@@ -171,3 +172,27 @@ def test_voxel_key_space_guard_rejects_an_absurd_resolution() -> None:
         ground_z=0.0, max_range=100.0,
     )
     assert centroids.shape[0] == 2
+
+
+def test_pack_xyzi_layout_is_16_bytes_per_point() -> None:
+    centroids = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+    counts = np.array([7, 9], dtype=np.int64)
+    blob = pack_xyzi(centroids, counts)
+
+    assert len(blob) == 2 * 16
+    back = np.frombuffer(blob, dtype=np.float32).reshape(2, 4)
+    assert np.allclose(back[:, :3], centroids)
+    assert np.allclose(back[:, 3], [7.0, 9.0])
+
+
+def test_pack_xyzi_rejects_mismatched_inputs() -> None:
+    try:
+        pack_xyzi(np.zeros((3, 3), np.float32), np.zeros(2, np.int64))
+        assert False, 'expected ValueError'
+    except ValueError:
+        pass
+    try:
+        pack_xyzi(np.zeros((3, 2), np.float32), np.zeros(3, np.int64))
+        assert False, 'expected ValueError'
+    except ValueError:
+        pass

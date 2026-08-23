@@ -29,6 +29,7 @@ from rclpy.qos import ReliabilityPolicy
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
 from vision_msgs.msg import Detection3DArray
 
@@ -43,6 +44,7 @@ from target_tracker.viz import CLUSTER_BLUE
 from target_tracker.viz import UDEPTH_YELLOW
 from target_tracker.viz import build_scene_update
 from target_tracker.viz import clusters_to_detections
+from target_tracker.viz import voxel_cloud
 from target_tracker.viz import u_boxes_to_detections
 
 
@@ -104,6 +106,7 @@ class Detectors(Node):
         self.declare_parameter('umap_jpeg_fps', 2.0)
         self.declare_parameter('umap_jpeg_quality', 80)
         self.declare_parameter('scene_lifetime_sec', 0.5)
+        self.declare_parameter('publish_cloud', True)
 
         self._output_frame = str(self.get_parameter('output_frame').value).strip()
         self._optical_frame = str(
@@ -148,6 +151,7 @@ class Detectors(Node):
         if self._scene_lifetime_sec <= 0.0:
             raise ValueError('scene_lifetime_sec must be positive')
 
+        self._publish_cloud = bool(self.get_parameter('publish_cloud').value)
         self._publish_umap = bool(self.get_parameter('publish_umap_jpeg').value)
         self._umap_quality = int(self.get_parameter('umap_jpeg_quality').value)
         umap_fps = float(self.get_parameter('umap_jpeg_fps').value)
@@ -164,6 +168,10 @@ class Detectors(Node):
         )
         self._cluster_scene_pub = self.create_publisher(
             SceneUpdate, 'cluster/scene', qos,
+        )
+        self._cloud_pub = (
+            self.create_publisher(PointCloud2, 'cluster/cloud', qos)
+            if self._publish_cloud else None
         )
         self._udepth_boxes_pub = self.create_publisher(
             Detection3DArray, 'udepth/boxes', qos,
@@ -276,6 +284,11 @@ class Detectors(Node):
         out_header = Header()
         out_header.stamp = header.stamp
         out_header.frame_id = self._output_frame or header.frame_id
+        if self._cloud_pub is not None:
+            mark = time.perf_counter()
+            self._cloud_pub.publish(voxel_cloud(centroids, counts, out_header))
+            timings['cloud'] = (time.perf_counter() - mark) * 1000.0
+
         detections = clusters_to_detections(clusters, out_header)
         self._cluster_boxes_pub.publish(detections)
         self._cluster_scene_pub.publish(
