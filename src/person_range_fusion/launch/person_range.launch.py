@@ -132,6 +132,17 @@ PERSON_RANGE_FOXGLOVE_TOPIC_WHITELIST = [
     '^/person_range/detections_3d$',
     '^/person_range/diagnostics$',
     '^/person_detector/detections$',
+    # Крок 1 геометричних детекторів (пакет target_tracker): тільки легкі
+    # топіки — бокси як SceneUpdate/Detection3DArray (кілька КБ) і U-map
+    # у вигляді JPEG. Ні PointCloud2, ні сирої U-map тут бути не може:
+    # канал 100 Мбіт вже не витримав '/stereo/depth' (див. коментар вище).
+    '^/detectors/cluster/scene$',
+    '^/detectors/cluster/boxes$',
+    '^/detectors/cluster/cloud$',
+    '^/detectors/udepth/scene$',
+    '^/detectors/udepth/boxes$',
+    '^/detectors/udepth/umap/compressed$',
+    '^/detectors/timing$',
     '^/tf$',
     '^/tf_static$',
     '^/rosout$',
@@ -151,6 +162,15 @@ PERSON_RANGE_FOXGLOVE_BEST_EFFORT = [
     '^/person_range/detections_3d$',
     '^/person_range/diagnostics$',
     '^/person_detector/detections$',
+    # Вузол detectors публікує все через sensor_qos() (BEST_EFFORT), тож без
+    # цих рядків foxglove_bridge підписався б як RELIABLE і не збігся б.
+    '^/detectors/cluster/scene$',
+    '^/detectors/cluster/boxes$',
+    '^/detectors/cluster/cloud$',
+    '^/detectors/udepth/scene$',
+    '^/detectors/udepth/boxes$',
+    '^/detectors/udepth/umap/compressed$',
+    '^/detectors/timing$',
 ]
 
 

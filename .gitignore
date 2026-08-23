@@ -44,4 +44,4 @@ calib_images/
 *.swp
 
 # Runtime-логи (перезаписуються при кожному запуску Hailo-нод)
-hailort.log
+hailort*.log
